@@ -42,6 +42,39 @@ app.post('/register', async (req, res) => {
     }
 })
 
+
+app.post('/login', async (req, res) =>{
+    const {body} = req
+    try{
+        const user = await User.findOne({email: body.email})
+        if(!user){
+            res.status(403).send('usuario y/o contraseña invalida')
+        }else{
+            const isMatch = await bcrypt.compare(body.password, user.password)
+            if (isMatch){
+                const signed = signToken(user._id)
+                res.status(200).send(signed)
+            }else{
+                res.status(403).send('usuario y/o contraseña invalida')
+            }
+        }
+    } 
+    catch(err) {
+        res.status(500).send(err.message)
+    }
+})
+
+//example of middleware
+app.get(
+    '/lele',
+    (req,res,next)=>{
+        next()
+    }, 
+    (req,res,next)=>{
+        console.log('lala')
+        res.send('ok')
+    }
+)
 app.listen(3001, () =>{
     console.log('listening in port 3001')
 })
