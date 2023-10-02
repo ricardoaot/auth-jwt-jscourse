@@ -2,8 +2,15 @@ const express = require('express')
 const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const expressJwt = require('express-jwt')
+const { expressjwt } = require("express-jwt");
 const User = require('./user')
+
+const app = express()
+app.use(express.json())
+
+//console.log(process.env.SECRET)
+
+const validateJwt = expressjwt({ secret: 'mi-string-secreto', algorithms: ['HS256'] })
 
 const signToken = (_id) => {
     return jwt.sign({_id}, 'mi-string-secreto')
@@ -11,9 +18,6 @@ const signToken = (_id) => {
 //Shorter way of the previous function
 //const signToken = _id => jwt.sign({_id}, 'mi-string-secreto')
 
-const app = express()
-
-app.use(express.json())
 
 app.post('/register', async (req, res) => {
     const {body} = req
@@ -44,7 +48,8 @@ app.post('/register', async (req, res) => {
 
 
 app.post('/login', async (req, res) =>{
-    const {body} = req
+    const { body } = req
+
     try{
         const user = await User.findOne({email: body.email})
         if(!user){
@@ -64,17 +69,31 @@ app.post('/login', async (req, res) =>{
     }
 })
 
-//example of middleware
-app.get(
-    '/lele',
-    (req,res,next)=>{
+const findAndAssignUser = async (req,res,next) => {
+    try {
+        const user = await User.findById(req.auth._id)
+
+        if ( !user ) {
+            return res.status(401).end()
+        }
+        req.user = user
         next()
-    }, 
-    (req,res,next)=>{
-        console.log('lala')
-        res.send('ok')
+
+    } catch (e) {
+        next(e)
+    }
+}
+
+const isAuthenticated = express.Router().use(validateJwt, findAndAssignUser)
+
+app.get(
+    '/lele', 
+    isAuthenticated,
+    (req, res) => {
+        return res.send(req.user)
     }
 )
+
 app.listen(3001, () =>{
     console.log('listening in port 3001')
 })
